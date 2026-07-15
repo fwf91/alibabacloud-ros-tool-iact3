@@ -95,10 +95,12 @@ class TeaSDKPlugin(metaclass=abc.ABCMeta):
     @property
     def client(self):
         if not self._client:
-            client = self.api_client()(self.config)
+            self._client = self.api_client()(self.config)
             if not self.endpoint:
-                self.endpoint = getattr(client, '_endpoint', '')
-            return self.api_client()(self.config)
+                self.endpoint = getattr(self._client, '_endpoint', '')
+            elif hasattr(self._client, '_endpoint'):
+                # Force override SDK's internal endpoint resolver
+                self._client._endpoint = self.endpoint
         return self._client
 
     async def send_request(self, request_name: str, ignore_exception: bool = False, **kwargs) -> dict:

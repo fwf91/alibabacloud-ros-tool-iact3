@@ -255,8 +255,7 @@ class TemplateConfig(JsonSchemaMixin, allow_additional_props=False):
             if not tf_content:
                 return
 
-            common_path = os.path.commonpath(list(tf_content))
-            work_space = {p.replace(common_path + '/', ''): value for p, value in tf_content.items()}
+            work_space = {os.path.relpath(p, template_path): value for p, value in tf_content.items()}
             return {
                 'ROSTemplateFormatVersion': '2015-09-01',
                 'Transform': self._get_tf_version(),
@@ -544,7 +543,13 @@ class BaseConfig(JsonSchemaMixin):
     async def _get_test_regions(self):
         if self._all_regions is None:
             plugin = StackPlugin('cn-hangzhou', self.general.auth.credential)
-            self._all_regions = await plugin.get_regions()
+            raw_regions = await plugin.get_regions()
+            # get_regions() returns list of {'id': ..., 'name': ...} dicts;
+            # extract just the region ID strings for internal use.
+            self._all_regions = [
+                r['id'] if isinstance(r, dict) else r
+                for r in raw_regions
+            ]
         return self._all_regions
 
     def get_credential(self):
