@@ -352,6 +352,231 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
         return null;
     }
 
+    // ========== Template Generation Commands (bypass Page Agent) ==========
+    // Page Agent only has click/wait/scroll tools, cannot call JS functions
+    // like generateTemplate(). So we intercept these commands and execute
+    // locally for reliability.
+
+    const BUILTIN_ECS_TEMPLATE = `ROSTemplateFormatVersion: '2015-09-01'
+Description: ECS instance with VPC and SecurityGroup
+Parameters:
+  ZoneId:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::ZoneId
+    AssociationPropertyMetadata:
+      RegionId: \${ALIYUN::Region}
+  InstanceType:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      ZoneId: \${ZoneId}
+      InstanceChargeType: PostPaid
+  ImageId:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Image::ImageId
+    AssociationPropertyMetadata:
+      RegionId: \${ALIYUN::Region}
+      InstanceType: \${InstanceType}
+  SystemDiskCategory:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Disk::SystemDiskCategory
+    AssociationPropertyMetadata:
+      ZoneId: \${ZoneId}
+      InstanceType: \${InstanceType}
+    Default: cloud_essd
+  Password:
+    Type: String
+    NoEcho: true
+    Description: ECS instance password
+Resources:
+  Vpc:
+    Type: ALIYUN::ECS::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+  VSwitch:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VpcId: !Ref Vpc
+      ZoneId: !Ref ZoneId
+      CidrBlock: 192.168.0.0/24
+  SecurityGroup:
+    Type: ALIYUN::ECS::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - PortRange: 22/22
+          Protocol: tcp
+          SourceCidrIp: 0.0.0.0/0
+        - PortRange: 80/80
+          Protocol: tcp
+          SourceCidrIp: 0.0.0.0/0
+  EcsInstance:
+    Type: ALIYUN::ECS::InstanceGroup
+    Properties:
+      ZoneId: !Ref ZoneId
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId
+      SystemDiskCategory: !Ref SystemDiskCategory
+      SystemDiskSize: 40
+      VpcId: !Ref Vpc
+      VSwitchId: !Ref VSwitch
+      SecurityGroupId: !Ref SecurityGroup
+      Password: !Ref Password
+      MaxAmount: 1
+Outputs:
+  InstanceId:
+    Value: !GetAtt EcsInstance.InstanceIds
+  PrivateIp:
+    Value: !GetAtt EcsInstance.PrivateIps`;
+
+    function matchTemplateCommand(command) {
+        const lower = command.toLowerCase();
+        const hasGenerate = /生成|创建|写|generate|create/.test(lower);
+        const hasTemplate = /模板|template/.test(lower);
+        const hasECS = /ecs|弹性计算|服务器|server/.test(lower);
+        const hasCost = /询价|费用|价格|cost|price|estimate/.test(lower);
+
+        // 生成模板 + 询价
+        if (hasGenerate && hasTemplate && hasCost) return { type: 'generate_and_cost' };
+        // 生成ECS模板
+        if (hasGenerate && hasTemplate && hasECS) return { type: 'generate' };
+        // 只询价
+        if (hasCost && hasECS) return { type: 'cost' };
+
+        return null;
+    }
+
+    async function executeTemplateCommand(command, match) {
+        isProcessing = true;
+        setInputEnabled(false);
+
+        try {
+            // 1. 显示执行计划
+            const steps = [];
+            if (match.type === 'generate_and_cost') {
+                steps.push('1. 调用 iac-code 生成 ECS 模板');
+                steps.push('2. 将模板填入编辑器');
+                steps.push('3. 自动生成参数 (Auto Generate)');
+                steps.push('4. 执行费用估算 (Estimate Cost)');
+            } else if (match.type === 'generate') {
+                steps.push('1. 调用 iac-code 生成 ECS 模板');
+                steps.push('2. 将模板填入编辑器');
+                steps.push('3. 自动生成参数 (Auto Generate)');
+            } else if (match.type === 'cost') {
+                steps.push('1. 执行费用估算 (Estimate Cost)');
+            }
+            addMessage('📋 执行计划：\n' + steps.join('\n'), 'assistant');
+
+            // 2. 生成模板
+            if (match.type === 'generate_and_cost' || match.type === 'generate') {
+                setStatus(true, '正在生成 ECS 模板...');
+
+                let template = null;
+                let usedIacCode = false;
+
+                // 先尝试 iac-code API
+                try {
+                    const resp = await fetch('/api/ai/generate-template', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt: 'create an ECS instance with VPC', format: 'ros'}),
+                    });
+                    if (resp.ok) {
+                        const result = await resp.json();
+                        if (result.template && result.template.length > 50) {
+                            template = result.template;
+                            usedIacCode = true;
+                        }
+                    }
+                } catch (e) {
+                    console.log('[AI Assistant] iac-code not available, using builtin template');
+                }
+
+                // 如果 iac-code 不可用，使用内置模板
+                if (!template) {
+                    template = BUILTIN_ECS_TEMPLATE;
+                    addMessage('⚠️ iac-code 不可用，使用内置 ECS 模板', 'assistant');
+                } else {
+                    addMessage('✅ iac-code 已生成 ECS 模板', 'assistant');
+                }
+
+                // 填入编辑器
+                const editor = document.getElementById('template-editor');
+                if (editor) {
+                    editor.value = template;
+                    editor.dispatchEvent(new Event('input'));
+                    addMessage('✅ ECS 模板已填入编辑器', 'assistant');
+                }
+
+                // 等待 UI 更新
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // 3. 生成参数
+                setStatus(true, '正在自动生成参数...');
+                const genBtn = document.getElementById('btn-generate-params');
+                if (genBtn) {
+                    genBtn.click();
+                    // 等待参数生成完成（最多 30 秒）
+                    const genStart = Date.now();
+                    while (Date.now() - genStart < 30000) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        const configEditor = document.getElementById('config-editor');
+                        if (configEditor && configEditor.value && configEditor.value.trim().length > 10) {
+                            break;
+                        }
+                    }
+                    addMessage('✅ 参数已自动生成', 'assistant');
+                }
+            }
+
+            // 4. 询价
+            if (match.type === 'generate_and_cost' || match.type === 'cost') {
+                setStatus(true, '正在执行费用估算...');
+                const costBtn = document.getElementById('btn-cost');
+                if (costBtn) {
+                    costBtn.click();
+                    // 等待询价完成（最多 60 秒）
+                    const costStart = Date.now();
+                    let costDone = false;
+                    while (Date.now() - costStart < 60000) {
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        const costResult = document.getElementById('result-cost');
+                        if (costResult) {
+                            const text = costResult.textContent.trim();
+                            // 询价完成后，结果区域会有内容且不再显示"估算中"
+                            if (text.length > 10 && !text.includes('估算中') && !text.includes('estimating')) {
+                                costDone = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // 读取结果
+                    const costResult = document.getElementById('result-cost');
+                    const costText = costResult ? costResult.textContent.trim() : '';
+                    if (costDone && costText.length > 10) {
+                        // 截取前 500 字符避免消息过长
+                        const displayText = costText.length > 500
+                            ? costText.substring(0, 500) + '...'
+                            : costText;
+                        addMessage('💰 询价结果：\n' + displayText, 'assistant');
+                    } else {
+                        addMessage('⚠️ 询价已完成，请查看页面上的 Cost 标签页获取详细结果。', 'assistant');
+                    }
+                }
+            }
+
+            addMessage('✅ 任务完成', 'assistant');
+        } catch (err) {
+            console.error('[AI Assistant] Template command error:', err);
+            addErrorMessage('执行失败: ' + err.message);
+        } finally {
+            isProcessing = false;
+            setInputEnabled(true);
+            setStatus(false);
+        }
+    }
+
     // ========== Execute Command ==========
     async function executeCommand(command) {
         if (!command.trim() || isProcessing) return;
@@ -359,6 +584,14 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
         // Add user message
         addMessage(command, 'user');
         inputEl.value = '';
+
+        // Intercept template generation commands — execute locally for reliability
+        // Page Agent cannot call JS functions like generateTemplate()
+        const templateMatch = matchTemplateCommand(command);
+        if (templateMatch) {
+            await executeTemplateCommand(command, templateMatch);
+            return;
+        }
 
         // Check if agent is available
         if (!pageAgent) {
