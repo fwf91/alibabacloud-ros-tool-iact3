@@ -103,16 +103,41 @@ Be concise. Act fast. Call done when finished.`;
                     baseURL: window.location.origin + '/api/llm/proxy',
                     apiKey: 'proxy-managed',
                 };
-                console.log('[AI Assistant] Using backend LLM proxy');
+                console.log('[AI Assistant] Using backend LLM proxy (qwen3.7-max)');
             } else {
-                // Use Page Agent's free demo LLM endpoint
-                agentOptions = {
-                    ...commonOptions,
-                    model: 'qwen3.7-max',
-                    baseURL: 'https://page-ag-testing-ohftxirgbn.cn-shanghai.fcapp.run',
-                    apiKey: 'NA',
-                };
-                console.log('[AI Assistant] Using demo LLM endpoint');
+                // Try to auto-configure from localStorage
+                const savedKey = localStorage.getItem('iact3-llm-key');
+                if (savedKey) {
+                    try {
+                        const setResp = await fetch('/api/llm/config', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({apiKey: savedKey}),
+                        });
+                        const setResult = await setResp.json();
+                        if (setResult.configured) {
+                            agentOptions = {
+                                ...commonOptions,
+                                model: 'qwen3.7-max',
+                                baseURL: window.location.origin + '/api/llm/proxy',
+                                apiKey: 'proxy-managed',
+                            };
+                            console.log('[AI Assistant] Auto-configured from localStorage, using proxy');
+                        }
+                    } catch (e) {
+                        console.warn('[AI Assistant] Auto-config failed:', e);
+                    }
+                }
+                // If still not configured, fallback to demo
+                if (!agentOptions) {
+                    agentOptions = {
+                        ...commonOptions,
+                        model: 'qwen3.5-plus',
+                        baseURL: 'https://page-ag-testing-ohftxirgbn.cn-shanghai.fcapp.run',
+                        apiKey: 'NA',
+                    };
+                    console.warn('[AI Assistant] No API key configured, using demo LLM (limited). Run setLLMKey("sk-xxx") in console to configure.');
+                }
             }
 
             const agent = new window.PageAgent(agentOptions);
@@ -427,6 +452,35 @@ Be concise. Act fast. Call done when finished.`;
         }
     });
 
+    // ========== Global API for runtime LLM configuration ==========
+    // Usage in browser console: setLLMKey('sk-xxx')
+    window.setLLMKey = async function(apiKey) {
+        if (!apiKey || typeof apiKey !== 'string') {
+            console.error('Usage: setLLMKey("sk-your-api-key")');
+            return;
+        }
+        try {
+            const resp = await fetch('/api/llm/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({apiKey: apiKey.trim()}),
+            });
+            const result = await resp.json();
+            if (result.configured) {
+                localStorage.setItem('iact3-llm-key', apiKey.trim());
+                // Reset agent so next command uses proxy
+                pageAgent = null;
+                console.log('%c✅ LLM configured! Using qwen3.7-max via proxy. Next command will use it.', 'color: green; font-weight: bold');
+                addMessage('LLM 已配置，下次对话将使用 qwen3.7-max。');
+            } else {
+                console.error('Failed to configure:', result);
+            }
+        } catch (e) {
+            console.error('Failed to set LLM key:', e);
+        }
+    };
+
     // ========== Init ==========
     console.log('[AI Assistant] iact3 AI Assistant loaded');
+    console.log('[AI Assistant] Tip: Run setLLMKey("sk-xxx") in console to configure LLM without restarting server.');
 })();

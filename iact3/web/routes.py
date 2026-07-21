@@ -1049,6 +1049,31 @@ async def get_llm_config(request):
     })
 
 
+async def set_llm_config(request):
+    """POST /api/llm/config - Set LLM API key at runtime (no restart needed).
+
+    Body: {"apiKey": "sk-xxx"}
+    This sets the environment variable for the current process so the
+    proxy endpoint can use it without restarting the server.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'error': 'Invalid JSON'}, status=400)
+
+    api_key = body.get('apiKey', '').strip()
+    if not api_key:
+        return web.json_response({'error': 'apiKey is required'}, status=400)
+
+    os.environ['DASHSCOPE_API_KEY'] = api_key
+    LOG.info('DASHSCOPE_API_KEY set at runtime via /api/llm/config')
+
+    return web.json_response({
+        'configured': True,
+        'message': 'API key configured. LLM proxy is now active.',
+    })
+
+
 def setup_routes(app: web.Application):
     """Register all API routes."""
     # Clean up stale temp files from previous sessions
@@ -3109,3 +3134,4 @@ def setup_routes(app: web.Application):
     app.router.add_post('/api/llm/proxy/chat/completions', llm_proxy)
     app.router.add_post('/api/llm/proxy', llm_proxy)
     app.router.add_get('/api/llm/config', get_llm_config)
+    app.router.add_post('/api/llm/config', set_llm_config)
