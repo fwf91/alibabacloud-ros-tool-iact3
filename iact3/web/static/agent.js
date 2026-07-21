@@ -99,7 +99,7 @@ Be concise. Act fast. Call done when finished.`;
                 // Use backend proxy with real LLM
                 agentOptions = {
                     ...commonOptions,
-                    model: 'qwen3.5-plus',
+                    model: 'qwen3.7-max',
                     baseURL: window.location.origin + '/api/llm/proxy',
                     apiKey: 'proxy-managed',
                 };
@@ -108,7 +108,7 @@ Be concise. Act fast. Call done when finished.`;
                 // Use Page Agent's free demo LLM endpoint
                 agentOptions = {
                     ...commonOptions,
-                    model: 'qwen3.5-plus',
+                    model: 'qwen3.7-max',
                     baseURL: 'https://page-ag-testing-ohftxirgbn.cn-shanghai.fcapp.run',
                     apiKey: 'NA',
                 };

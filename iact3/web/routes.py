@@ -1045,7 +1045,7 @@ async def get_llm_config(request):
         'configured': bool(api_key),
         'provider': 'dashscope',
         'baseURL': '/api/llm/proxy',  # Always use proxy
-        'models': ['qwen3.5-plus', 'qwen-turbo', 'qwen-max'] if api_key else [],
+        'models': ['qwen3.7-max', 'qwen3.5-plus', 'qwen-turbo', 'qwen-max'] if api_key else [],
     })
 
 
