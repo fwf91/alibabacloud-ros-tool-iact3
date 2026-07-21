@@ -998,6 +998,8 @@ async def llm_proxy(request):
       - LLM_BASE_URL: Custom LLM API base URL (optional)
     """
     import aiohttp as aioh
+    import ssl
+    import certifi
 
     api_key = os.environ.get('DASHSCOPE_API_KEY', '')
     base_url = os.environ.get('LLM_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
@@ -1020,9 +1022,12 @@ async def llm_proxy(request):
         'Content-Type': 'application/json',
     }
 
+    # Use certifi's CA bundle to fix SSL verification on macOS
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+
     try:
         async with aioh.ClientSession() as session:
-            async with session.post(target_url, json=body, headers=headers, timeout=aioh.ClientTimeout(total=120)) as resp:
+            async with session.post(target_url, json=body, headers=headers, ssl=ssl_context, timeout=aioh.ClientTimeout(total=120)) as resp:
                 response_body = await resp.json()
                 return web.json_response(response_body, status=resp.status)
     except aioh.ClientError as e:
@@ -1030,7 +1035,7 @@ async def llm_proxy(request):
         return web.json_response({'error': f'LLM API request failed: {str(e)}'}, status=502)
     except Exception as e:
         LOG.error(f'LLM proxy unexpected error: {e}')
-        return web.json_response({'error': 'Internal server error'}, status=500)
+        return web.json_response({'error': f'Internal server error: {str(e)}'}, status=500)
 
 
 async def get_llm_config(request):
