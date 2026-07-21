@@ -102,7 +102,7 @@
                                 <button type="button" class="format-btn" id="tab-yaml" data-format="yaml" data-i18n="yamlTab">YAML</button>
                             </div>
                         </div>
-                        <div class="template-editor-wrap" data-page-agent-ignore>
+                        <div class="template-editor-wrap">
                             <div id="tf-file-list" class="tf-file-list hidden">
                                 <div class="tf-file-list-header">
                                     <span data-i18n="tfDirTitle">Directory</span>
@@ -119,9 +119,9 @@
                             <div class="tf-editor-area" id="tf-editor-area">
                                 <div class="tf-tabs-bar hidden" id="tf-tabs-bar"></div>
                                 <div class="code-editor" id="template-code-editor">
-                                    <div class="line-numbers" id="template-line-numbers">1</div>
+                                    <div class="line-numbers" id="template-line-numbers" data-page-agent-ignore>1</div>
                                     <div class="highlight-wrap">
-                                        <pre class="highlight-layer" aria-hidden="true"><code id="template-highlight"></code></pre>
+                                        <pre class="highlight-layer" aria-hidden="true" data-page-agent-ignore><code id="template-highlight"></code></pre>
                                         <textarea id="template-editor" spellcheck="false"></textarea>
                                     </div>
                                 </div>
@@ -570,7 +570,7 @@
 </div>
 
 <!-- AI Assistant Panel -->
-<div id="ai-assistant-panel" class="ai-panel hidden">
+<div id="ai-assistant-panel" class="ai-panel hidden" data-page-agent-ignore>
     <div class="ai-panel-header">
         <div class="ai-panel-title">
             <img src="/static/img/ai-avatar.png" alt="AI" class="ai-panel-icon">
@@ -601,7 +601,7 @@
 </div>
 
 <!-- AI Assistant Float Button -->
-<button id="ai-assistant-btn" class="ai-float-btn" title="AI Assistant" data-i18n-title="aiFloatTitle">
+<button id="ai-assistant-btn" class="ai-float-btn" title="AI Assistant" data-i18n-title="aiFloatTitle" data-page-agent-ignore>
     <img src="/static/img/ai-avatar.png" alt="AI" class="ai-float-icon">
 </button>
 
@@ -612,6 +612,6 @@
 <script src="/static/i18n.js?v=13"></script>
 <script src="/static/app.js?v=24"></script>
 <script src="/static/iac-knowledge.js?v=1"></script>
-<script src="/static/agent.js?v=15"></script>
+<script src="/static/agent.js?v=16"></script>
 </body>
 </html>
