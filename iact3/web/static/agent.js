@@ -85,12 +85,25 @@
 5. 等待删除操作完成（观察 toast 提示或列表刷新）
 6. 调用 done 告知用户删除了哪些任务
 
+### 查看任务模板内容
+1. 如果已在某个任务详情页，先点击 "Back" 按钮 (#btn-detail-back) 返回任务列表
+   ⚠️ 严禁在此步 done
+2. 点击侧边栏 "Tasks" [data-page="tasks"] 导航到任务列表
+   ⚠️ 严禁在此步 done
+3. 点击目标任务名称（.task-name-link）进入详情页
+   ⚠️ 严禁在此步 done
+4. 在详情页点击 "Template" 标签页 ([data-td-tab="template"]) 查看模板内容
+   ⚠️ 严禁在此步 done
+5. 读取模板内容并调用 done 汇报（包含模板的 ROSTemplateFormatVersion、Resources、Parameters 等关键信息）
+
 ## 页面元素说明
 - 侧边栏导航: [data-page="playground"], [data-page="tasks"], [data-page="projects"]
+- 返回按钮: #btn-detail-back (在任务详情页返回任务列表)
 - 任务行复选框: .task-row-checkbox (每行一个，按列表顺序)
 - 任务名称链接: .task-name-link (点击进入详情)
 - 全选复选框: #task-select-all-header
 - 批量删除按钮: #btn-batch-delete-task
+- 任务详情标签页: [data-td-tab="overview"](概览), [data-td-tab="stacks"](资源栈), [data-td-tab="template"](模板), [data-td-tab="params"](配置), [data-td-tab="logs"](日志)
 - 地域选择器: 点击 #pg-region-trigger 打开下拉，然后点击选项
 - 运行按钮: #btn-run
 - 自动生成参数: #btn-generate-params
