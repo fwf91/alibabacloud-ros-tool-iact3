@@ -68,6 +68,7 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
             const commonOptions = {
                 language: 'zh-CN',
                 viewportExpansion: 0,  // Only process elements in viewport
+                maxSteps: 5,           // Limit steps to prevent context overflow
                 interactiveBlacklist: [
                     // Exclude large/complex areas from DOM dehydration
                     document.getElementById('template-editor'),
@@ -170,6 +171,47 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
         return div.innerHTML;
     }
 
+    // ========== Extract Result from Agent History ==========
+    function extractAgentResult() {
+        if (!pageAgent) return null;
+        const history = pageAgent.history || [];
+        if (history.length === 0) return null;
+
+        // Strategy 1: Find last 'done' action with text
+        const lastDone = [...history].reverse().find(h =>
+            h.type === 'step' && h.action && h.action.name === 'done'
+        );
+        if (lastDone && lastDone.action.input && lastDone.action.input.text) {
+            return lastDone.action.input.text;
+        }
+
+        // Strategy 2: Find last observation with meaningful content
+        const lastObs = [...history].reverse().find(h =>
+            h.type === 'observation' && h.content && h.content.length > 20
+        );
+        if (lastObs) {
+            return lastObs.content;
+        }
+
+        // Strategy 3: Find last step with reflection (contains analysis)
+        const lastReflection = [...history].reverse().find(h =>
+            h.type === 'step' && h.reflection && h.reflection.evaluation_previous_goal
+        );
+        if (lastReflection && lastReflection.reflection.evaluation_previous_goal) {
+            return lastReflection.reflection.evaluation_previous_goal;
+        }
+
+        // Strategy 4: Find last action output
+        const lastAction = [...history].reverse().find(h =>
+            h.type === 'step' && h.action && h.action.output && h.action.output.length > 10
+        );
+        if (lastAction) {
+            return lastAction.action.output;
+        }
+
+        return null;
+    }
+
     // ========== Execute Command ==========
     async function executeCommand(command) {
         if (!command.trim() || isProcessing) return;
@@ -223,23 +265,20 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
             await pageAgent.execute(command);
 
             // Get result from agent
-            const lastResult = pageAgent.lastResult;
-            if (lastResult && lastResult.success === false) {
-                addErrorMessage(lastResult.message || t('aiTaskFailed'));
+            const extractedResult = extractAgentResult();
+            if (extractedResult) {
+                addMessage(extractedResult);
             } else {
-                // Extract the last 'done' message from history
-                const history = pageAgent.history || [];
-                const lastDone = [...history].reverse().find(h =>
-                    h.type === 'step' && h.action && h.action.name === 'done'
-                );
-                if (lastDone && lastDone.action.input && lastDone.action.input.text) {
-                    addMessage(lastDone.action.input.text);
-                } else {
-                    addMessage(t('aiTaskCompleted'));
-                }
+                addMessage(t('aiTaskCompleted'));
             }
         } catch (err) {
             console.error('[AI Assistant] Execution error:', err);
+            // Even on error, try to extract useful results from history
+            const partialResult = extractAgentResult();
+            if (partialResult) {
+                addMessage(partialResult);
+                return;
+            }
             // Try fallback for simple commands
             if (executeFallbackCommand(command)) return;
             const errMsg = err.message || '';
