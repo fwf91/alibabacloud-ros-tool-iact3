@@ -107,7 +107,7 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
             inputEl.focus();
             // Initialize agent on first open
             if (!pageAgent) {
-                setStatus(true, 'Initializing...');
+                setStatus(true, t('aiInitializing'));
                 pageAgent = await initPageAgent();
                 setStatus(false);
             }
@@ -131,9 +131,10 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
     }
 
     function clearMessages() {
+        const clearedMsg = typeof t === 'function' ? t('aiChatCleared') : 'Chat cleared. How can I help you?';
         messagesEl.innerHTML = `
             <div class="ai-message ai-message-assistant">
-                <div class="ai-message-content">Chat cleared. How can I help you?</div>
+                <div class="ai-message-content">${escapeHtml(clearedMsg)}</div>
             </div>
         `;
     }
@@ -170,7 +171,7 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
         if (!pageAgent) {
             // Fallback to simple command parser
             if (executeFallbackCommand(command)) return;
-            addErrorMessage('AI Assistant is not available. Page Agent failed to load.');
+            addErrorMessage(t('aiNotAvailable'));
             return;
         }
 
@@ -178,26 +179,26 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
         if (typeof pageAgent.execute !== 'function') {
             console.error('[AI Assistant] execute method not found, trying fallback');
             if (executeFallbackCommand(command)) return;
-            addErrorMessage('AI Agent API error: execute method not available.');
+            addErrorMessage(t('aiApiError'));
             return;
         }
 
         isProcessing = true;
         setInputEnabled(false);
-        setStatus(true, 'Thinking...');
+        setStatus(true, t('aiThinking'));
 
         // Listen to agent events for status updates
         const onActivity = (e) => {
             if (e.detail?.type === 'thinking') {
-                setStatus(true, 'Thinking...');
+                setStatus(true, t('aiThinking'));
             } else if (e.detail?.type === 'executing') {
-                setStatus(true, 'Executing: ' + (e.detail.tool || 'action'));
+                setStatus(true, t('aiExecuting') + ' ' + (e.detail.tool || 'action'));
             }
         };
         const onStatusChange = () => {
             const status = pageAgent.status;
             if (status === 'running') {
-                setStatus(true, 'Running...');
+                setStatus(true, t('aiRunning'));
             }
         };
         pageAgent.addEventListener('activity', onActivity);
@@ -209,7 +210,7 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
             // Get result from agent
             const lastResult = pageAgent.lastResult;
             if (lastResult && lastResult.success === false) {
-                addErrorMessage(lastResult.message || 'Task failed.');
+                addErrorMessage(lastResult.message || t('aiTaskFailed'));
             } else {
                 // Extract the last 'done' message from history
                 const history = pageAgent.history || [];
@@ -219,14 +220,14 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
                 if (lastDone && lastDone.action.input && lastDone.action.input.text) {
                     addMessage(lastDone.action.input.text);
                 } else {
-                    addMessage('Task completed.');
+                    addMessage(t('aiTaskCompleted'));
                 }
             }
         } catch (err) {
             console.error('[AI Assistant] Execution error:', err);
             // Try fallback for simple commands
             if (executeFallbackCommand(command)) return;
-            addErrorMessage(`Error: ${err.message || 'Failed to execute command'}`);
+            addErrorMessage(`Error: ${err.message || t('aiExecFailed')}`);
         } finally {
             pageAgent.removeEventListener('activity', onActivity);
             pageAgent.removeEventListener('statuschange', onStatusChange);
@@ -244,36 +245,36 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
         // Navigation commands
         if (cmd.includes('task') || cmd.includes('任务')) {
             document.querySelector('[data-page="tasks"]')?.click();
-            addMessage('Navigated to Tasks page.');
+            addMessage(t('aiNavTasks'));
             return true;
         }
         if (cmd.includes('project') || cmd.includes('项目')) {
             document.querySelector('[data-page="projects"]')?.click();
-            addMessage('Navigated to Projects page.');
+            addMessage(t('aiNavProjects'));
             return true;
         }
         if (cmd.includes('playground') || cmd.includes('运行')) {
             document.querySelector('[data-page="playground"]')?.click();
-            addMessage('Navigated to Playground page.');
+            addMessage(t('aiNavPlayground'));
             return true;
         }
 
         // Load examples
         if (cmd.includes('ros') && (cmd.includes('example') || cmd.includes('示例'))) {
             document.getElementById('load-ros-example')?.click();
-            addMessage('ROS example loaded.');
+            addMessage(t('aiRosLoaded'));
             return true;
         }
         if (cmd.includes('terraform') && (cmd.includes('example') || cmd.includes('示例'))) {
             document.getElementById('load-tf-example')?.click();
-            addMessage('Terraform example loaded.');
+            addMessage(t('aiTfLoaded'));
             return true;
         }
 
         // Run test
         if (cmd.includes('run') && cmd.includes('test')) {
             document.getElementById('btn-run')?.click();
-            addMessage('Test started! Check Tasks page for progress.');
+            addMessage(t('aiTestStarted'));
             return true;
         }
 
@@ -309,6 +310,15 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && panelVisible) {
             togglePanel(false);
+        }
+    });
+
+    // Listen for language changes to update dynamic messages
+    window.addEventListener('iact3-lang-change', () => {
+        // Update the welcome message if it's the initial state
+        const firstMsg = messagesEl.querySelector('.ai-message-assistant .ai-message-content');
+        if (firstMsg && !isProcessing && messagesEl.children.length === 1) {
+            firstMsg.textContent = t('aiWelcome');
         }
     });
 
