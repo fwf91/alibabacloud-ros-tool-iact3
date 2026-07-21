@@ -237,6 +237,37 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
         }
     }
 
+    // ========== Quick Actions (bypass LLM, direct local execution) ==========
+    function executeQuickAction(action) {
+        if (isProcessing) return;
+        switch (action) {
+            case 'run-ros-example':
+                document.getElementById('load-ros-example')?.click();
+                addMessage(t('aiRosLoaded'));
+                // Auto-run test after a short delay
+                setTimeout(() => {
+                    document.getElementById('btn-run')?.click();
+                    addMessage(t('aiTestStarted'));
+                }, 800);
+                break;
+            case 'nav-tasks':
+                document.querySelector('[data-page="tasks"]')?.click();
+                addMessage(t('aiNavTasks'));
+                break;
+            case 'nav-projects':
+                document.querySelector('[data-page="projects"]')?.click();
+                addMessage(t('aiNavProjects'));
+                break;
+            case 'nav-playground':
+                document.querySelector('[data-page="playground"]')?.click();
+                addMessage(t('aiNavPlayground'));
+                break;
+            default:
+                // Unknown quick action, try as normal command
+                executeCommand(action);
+        }
+    }
+
     // ========== Fallback: Simple Command Parser ==========
     // When Page Agent is not available, use simple command matching
     function executeFallbackCommand(command) {
@@ -302,7 +333,7 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
     quickBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const cmd = btn.dataset.cmd;
-            if (cmd) executeCommand(cmd);
+            if (cmd) executeQuickAction(cmd);
         });
     });
 
