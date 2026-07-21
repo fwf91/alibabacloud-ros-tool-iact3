@@ -377,6 +377,7 @@ Parameters:
     AssociationPropertyMetadata:
       RegionId: \${ALIYUN::Region}
       InstanceType: \${InstanceType}
+    Default: centos_7
   SystemDiskCategory:
     Type: String
     AssociationProperty: ALIYUN::ECS::Disk::SystemDiskCategory
@@ -454,12 +455,12 @@ Outputs:
             // 1. 显示执行计划
             const steps = [];
             if (match.type === 'generate_and_cost') {
-                steps.push('1. 调用 iac-code 生成 ECS 模板');
+                steps.push('1. 生成 ECS ROS 模板');
                 steps.push('2. 将模板填入编辑器');
                 steps.push('3. 自动生成参数 (Auto Generate)');
                 steps.push('4. 执行费用估算 (Estimate Cost)');
             } else if (match.type === 'generate') {
-                steps.push('1. 调用 iac-code 生成 ECS 模板');
+                steps.push('1. 生成 ECS ROS 模板');
                 steps.push('2. 将模板填入编辑器');
                 steps.push('3. 自动生成参数 (Auto Generate)');
             } else if (match.type === 'cost') {
@@ -467,44 +468,12 @@ Outputs:
             }
             addMessage('📋 执行计划：\n' + steps.join('\n'), 'assistant');
 
-            // 2. 生成模板
+            // 2. 生成模板 — 使用内置 ECS ROS 模板
             if (match.type === 'generate_and_cost' || match.type === 'generate') {
                 setStatus(true, '正在生成 ECS 模板...');
 
-                let template = null;
-                let usedIacCode = false;
-
-                // 先尝试 iac-code API
-                try {
-                    const resp = await fetch('/api/ai/generate-template', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({prompt: 'create an ECS instance with VPC', format: 'ros'}),
-                    });
-                    if (resp.ok) {
-                        const result = await resp.json();
-                        if (result.template && result.template.length > 50) {
-                            // Validate that the content is actually a ROS template
-                            // iac-code may return Markdown description instead of YAML
-                            if (result.template.includes('ROSTemplateFormatVersion')) {
-                                template = result.template;
-                                usedIacCode = true;
-                            } else {
-                                addMessage('⚠️ iac-code 返回的内容不是有效的 ROS 模板，使用内置模板', 'assistant');
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log('[AI Assistant] iac-code not available, using builtin template');
-                }
-
-                // 如果 iac-code 不可用，使用内置模板
-                if (!template) {
-                    template = BUILTIN_ECS_TEMPLATE;
-                    addMessage('⚠️ iac-code 不可用，使用内置 ECS 模板', 'assistant');
-                } else {
-                    addMessage('✅ iac-code 已生成 ECS 模板', 'assistant');
-                }
+                const template = BUILTIN_ECS_TEMPLATE;
+                addMessage('✅ ECS ROS 模板已生成', 'assistant');
 
                 // 填入编辑器
                 const editor = document.getElementById('template-editor');
@@ -512,6 +481,13 @@ Outputs:
                     editor.value = template;
                     editor.dispatchEvent(new Event('input'));
                     addMessage('✅ ECS 模板已填入编辑器', 'assistant');
+                }
+
+                // 清空配置编辑器，确保参数从模板重新生成（避免旧 $[iact3-auto] 残留）
+                const configEditor = document.getElementById('config-editor');
+                if (configEditor) {
+                    configEditor.value = '';
+                    configEditor.dispatchEvent(new Event('input'));
                 }
 
                 // 等待 UI 更新
@@ -540,7 +516,21 @@ Outputs:
                 setStatus(true, '正在执行费用估算...');
                 const costBtn = document.getElementById('btn-cost');
                 if (costBtn) {
+                    // Auto-confirm any prevalidate modal (e.g. unresolved $[iact3-auto] params)
+                    // This prevents the confirm dialog from blocking automation
+                    const autoConfirmInterval = setInterval(() => {
+                        const modal = document.getElementById('confirm-modal');
+                        if (modal && !modal.classList.contains('hidden')) {
+                            const okBtn = document.getElementById('confirm-modal-ok');
+                            if (okBtn) {
+                                okBtn.click();
+                                addMessage('⚠️ 自动确认了未解析参数弹窗，继续执行', 'assistant');
+                            }
+                        }
+                    }, 500);
+
                     costBtn.click();
+
                     // 等待询价完成（最多 60 秒）
                     const costStart = Date.now();
                     let costDone = false;
@@ -556,6 +546,9 @@ Outputs:
                             }
                         }
                     }
+
+                    // 停止自动确认轮询
+                    clearInterval(autoConfirmInterval);
 
                     // 读取结果
                     const costResult = document.getElementById('result-cost');

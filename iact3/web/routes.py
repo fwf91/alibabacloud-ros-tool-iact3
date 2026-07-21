@@ -498,16 +498,17 @@ def _inject_auto_params(template_content, template_files, config_content):
                     # Remove config parameters NOT defined in the template
                     tests_params = {k: v for k, v in tests_params.items() if k in tpl_params}
                     # For auto-resolvable params: always $[iact3-auto]
-                    # For other params: use Default if available, else $[iact3-auto]
+                    # For other params: use Default if available (override stale $[iact3-auto]),
+                    # else $[iact3-auto] only if not already set by user
                     for param_name, param_def in tpl_params.items():
                         if _is_auto_resolvable(param_name):
                             tests_params[param_name] = '$[iact3-auto]'
+                        elif isinstance(param_def, dict) and 'Default' in param_def:
+                            # Force use Default value — overrides stale $[iact3-auto] from previous runs
+                            default_val = param_def['Default']
+                            tests_params[param_name] = str(default_val) if default_val is not None else '$[iact3-auto]'
                         elif param_name not in tests_params:
-                            if isinstance(param_def, dict) and 'Default' in param_def:
-                                default_val = param_def['Default']
-                                tests_params[param_name] = str(default_val) if default_val is not None else '$[iact3-auto]'
-                            else:
-                                tests_params[param_name] = '$[iact3-auto]'
+                            tests_params[param_name] = '$[iact3-auto]'
 
     # Write updated parameters back to config
     if not tests_params:
