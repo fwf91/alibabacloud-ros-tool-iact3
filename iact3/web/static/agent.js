@@ -246,6 +246,9 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
                 <div class="ai-message-content">${escapeHtml(clearedMsg)}</div>
             </div>
         `;
+        // Reset Page Agent so next command creates a fresh instance
+        // (previous instance may have been disposed by Page Agent internally)
+        pageAgent = null;
     }
 
     function setStatus(visible, text) {
@@ -372,6 +375,30 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
             }
         } catch (err) {
             console.error('[AI Assistant] Execution error:', err);
+            // Detect disposed agent and retry with fresh instance
+            const errMsg = err.message || '';
+            if (errMsg.includes('disposed') || errMsg.includes('disposed')) {
+                console.warn('[AI Assistant] PageAgent was disposed, recreating...');
+                pageAgent = null;
+                addMessage(t('aiInitializing') || '重新初始化 AI 助手...');
+                pageAgent = await initPageAgent();
+                if (pageAgent) {
+                    // Retry the command once
+                    try {
+                        const retryStartIndex = (pageAgent.history || []).length;
+                        await pageAgent.execute(command);
+                        const retryResult = extractAgentResult(retryStartIndex);
+                        if (retryResult) {
+                            addMessage(retryResult);
+                        } else {
+                            addMessage(t('aiTaskCompleted'));
+                        }
+                        return;
+                    } catch (retryErr) {
+                        console.error('[AI Assistant] Retry also failed:', retryErr);
+                    }
+                }
+            }
             // Even on error, try to extract useful results from new history entries
             const partialResult = extractAgentResult(historyStartIndex);
             if (partialResult) {
@@ -380,15 +407,21 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
             }
             // Try fallback for simple commands
             if (executeFallbackCommand(command)) return;
-            const errMsg = err.message || '';
             if (errMsg.includes('413') || errMsg.includes('Payload Too Large')) {
                 addErrorMessage(t('aiPayloadTooLarge'));
             } else {
                 addErrorMessage(`Error: ${errMsg || t('aiExecFailed')}`);
             }
         } finally {
-            pageAgent.removeEventListener('activity', onActivity);
-            pageAgent.removeEventListener('statuschange', onStatusChange);
+            // Guard removeEventListener in case agent was disposed
+            try {
+                if (pageAgent) {
+                    pageAgent.removeEventListener('activity', onActivity);
+                    pageAgent.removeEventListener('statuschange', onStatusChange);
+                }
+            } catch (e) {
+                // Agent may be disposed, ignore
+            }
             isProcessing = false;
             setInputEnabled(true);
             setStatus(false);
