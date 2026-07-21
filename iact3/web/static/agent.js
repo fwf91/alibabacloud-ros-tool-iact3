@@ -484,8 +484,14 @@ Outputs:
                     if (resp.ok) {
                         const result = await resp.json();
                         if (result.template && result.template.length > 50) {
-                            template = result.template;
-                            usedIacCode = true;
+                            // Validate that the content is actually a ROS template
+                            // iac-code may return Markdown description instead of YAML
+                            if (result.template.includes('ROSTemplateFormatVersion')) {
+                                template = result.template;
+                                usedIacCode = true;
+                            } else {
+                                addMessage('⚠️ iac-code 返回的内容不是有效的 ROS 模板，使用内置模板', 'assistant');
+                            }
                         }
                     }
                 } catch (e) {

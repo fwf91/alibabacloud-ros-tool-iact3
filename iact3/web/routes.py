@@ -1177,11 +1177,61 @@ async def generate_template_iac_code(request):
             }, status=502)
 
         output = stdout.decode().strip() if stdout else ''
-        return web.json_response({
-            'template': output,
-            'format': fmt,
-            'source': 'iac-code',
-        })
+
+        # iac-code may return Markdown description instead of pure YAML
+        # Need to extract the actual template content
+        import re
+        template = None
+
+        # Strategy 1: Extract YAML code block from Markdown output
+        yaml_match = re.search(r'```ya?ml\s*\n(.*?)```', output, re.DOTALL)
+        if yaml_match:
+            template = yaml_match.group(1).strip()
+
+        # Strategy 2: Find ROSTemplateFormatVersion in output (ROS YAML starts with this)
+        if not template and 'ROSTemplateFormatVersion' in output:
+            ros_match = re.search(r'(ROSTemplateFormatVersion.*)', output, re.DOTALL)
+            if ros_match:
+                template = ros_match.group(1).strip()
+
+        # Strategy 3: Extract file path from output and read the file
+        # iac-code often writes template to a temp file and reports the path
+        if not template:
+            file_match = re.search(r'文件路径[：:]\s*`?([^\s`]+)`?', output)
+            if file_match:
+                file_path = file_match.group(1)
+                try:
+                    with open(file_path, 'r') as f:
+                        file_content = f.read().strip()
+                    if 'ROSTemplateFormatVersion' in file_content or 'resource "' in file_content:
+                        template = file_content
+                except Exception:
+                    pass
+
+        # Strategy 4: Check for Terraform code block
+        if not template and fmt == 'terraform':
+            tf_match = re.search(r'```hcl\s*\n(.*?)```', output, re.DOTALL)
+            if tf_match:
+                template = tf_match.group(1).strip()
+            elif 'resource "' in output:
+                tf_match2 = re.search(r'(resource ".*)', output, re.DOTALL)
+                if tf_match2:
+                    template = tf_match2.group(1).strip()
+
+        if template:
+            return web.json_response({
+                'template': template,
+                'format': fmt,
+                'source': 'iac-code',
+            })
+        else:
+            # Return raw output but with a warning — frontend should validate
+            return web.json_response({
+                'template': output,
+                'format': fmt,
+                'source': 'iac-code',
+                'warning': 'Could not extract pure template from iac-code output',
+            })
 
     except asyncio.TimeoutError:
         return web.json_response({'error': 'iac-code timed out (120s)'}, status=504)
