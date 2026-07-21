@@ -1079,6 +1079,117 @@ async def set_llm_config(request):
     })
 
 
+# --- AI Assistant: iac-code integration ---
+
+async def get_iac_code_status(request):
+    """GET /api/ai/iac-code-status - Check if iac-code is installed and configured."""
+    import shutil
+    import asyncio
+
+    iac_code_path = shutil.which('iac-code')
+    if not iac_code_path:
+        # Try virtualenv
+        venv_iac_code = str(Path(__file__).parent.parent.parent / '.venv' / 'bin' / 'iac-code')
+        if Path(venv_iac_code).exists():
+            iac_code_path = venv_iac_code
+
+    if not iac_code_path:
+        return web.json_response({
+            'installed': False,
+            'message': 'iac-code is not installed. Run: pip install iac-code',
+        })
+
+    # Check if configured (has auth)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            iac_code_path, '--version',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
+        version = stdout.decode().strip() if stdout else 'unknown'
+    except Exception:
+        version = 'unknown'
+
+    return web.json_response({
+        'installed': True,
+        'path': iac_code_path,
+        'version': version,
+        'has_llm_key': bool(os.environ.get('DASHSCOPE_API_KEY', '')),
+    })
+
+
+async def generate_template_iac_code(request):
+    """POST /api/ai/generate-template - Generate IaC template using iac-code.
+
+    Body: {"prompt": "Create a VPC with two ECS instances", "format": "ros"|"terraform"}
+    Returns generated template content.
+    """
+    import shutil
+    import asyncio
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'error': 'Invalid JSON body'}, status=400)
+
+    prompt = body.get('prompt', '').strip()
+    if not prompt:
+        return web.json_response({'error': 'prompt is required'}, status=400)
+
+    fmt = body.get('format', 'ros')  # ros or terraform
+
+    # Find iac-code binary
+    iac_code_path = shutil.which('iac-code')
+    if not iac_code_path:
+        venv_iac_code = str(Path(__file__).parent.parent.parent / '.venv' / 'bin' / 'iac-code')
+        if Path(venv_iac_code).exists():
+            iac_code_path = venv_iac_code
+
+    if not iac_code_path:
+        return web.json_response({
+            'error': 'iac-code is not installed. Run: pip install iac-code',
+            'hint': 'Install iac-code and configure it with: iac-code (then /auth in interactive mode)',
+        }, status=503)
+
+    # Build the full prompt
+    full_prompt = prompt
+    if fmt == 'terraform':
+        full_prompt = f'{prompt}\n\n请生成 Terraform 格式的模板。'
+    else:
+        full_prompt = f'{prompt}\n\n请生成 ROS 原生模板（YAML 格式）。'
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            iac_code_path, '--prompt', full_prompt,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={**os.environ},
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+
+        if proc.returncode != 0:
+            error_msg = stderr.decode().strip() if stderr else 'Unknown error'
+            LOG.error(f'iac-code failed: {error_msg}')
+            return web.json_response({
+                'error': f'iac-code execution failed: {error_msg}',
+                'hint': 'Make sure iac-code is configured. Run: iac-code (then /auth in interactive mode)',
+            }, status=502)
+
+        output = stdout.decode().strip() if stdout else ''
+        return web.json_response({
+            'template': output,
+            'format': fmt,
+            'source': 'iac-code',
+        })
+
+    except asyncio.TimeoutError:
+        return web.json_response({'error': 'iac-code timed out (120s)'}, status=504)
+    except Exception as e:
+        LOG.error(f'iac-code unexpected error: {e}')
+        return web.json_response({'error': f'Internal error: {str(e)}'}, status=500)
+
+
 def setup_routes(app: web.Application):
     """Register all API routes."""
     # Clean up stale temp files from previous sessions
@@ -3140,3 +3251,7 @@ def setup_routes(app: web.Application):
     app.router.add_post('/api/llm/proxy', llm_proxy)
     app.router.add_get('/api/llm/config', get_llm_config)
     app.router.add_post('/api/llm/config', set_llm_config)
+
+    # --- API: AI Assistant (iac-code integration) ---
+    app.router.add_get('/api/ai/iac-code-status', get_iac_code_status)
+    app.router.add_post('/api/ai/generate-template', generate_template_iac_code)

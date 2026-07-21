@@ -24,7 +24,13 @@
     const quickBtns = document.querySelectorAll('.ai-quick-btn');
 
     // ========== System Prompt ==========
+    // IaC 知识库来源于 aliyun/iac-code 项目
+    const iacKnowledge = (typeof window.IAC_KNOWLEDGE !== 'undefined')
+        ? window.IAC_KNOWLEDGE.getCompactKnowledge()
+        : '';
+
     const SYSTEM_PROMPT = `你是 iact3 的 AI 助手。iact3 是阿里云 ROS/Terraform 模板测试工具。
+你同时具备阿里云 IaC 专业知识，能帮助用户编写模板、选择规格、规划网络。
 
 ## 核心规则
 - 必须完成用户要求的所有操作后才能调用 done，不要中途停止
@@ -32,6 +38,7 @@
 - “前两个/前三个”指列表中最上面的 N 个项目
 - 每步只做一件事，不要犹豫
 - 如果确实无法继续（如元素不存在），才调用 done 并说明原因
+- 当用户询问模板/规格/网络规划时，使用下方的 IaC 专业知识回答
 
 ## 常见工作流
 
@@ -64,6 +71,8 @@
 - 运行按钮: #btn-run
 - 自动生成参数: #btn-generate-params
 - 确认弹窗按钮: #confirm-modal-ok (确认), #confirm-modal-cancel (取消)
+
+${iacKnowledge}
 
 Be concise. Act fast. Complete all steps before calling done.`;
 
@@ -483,7 +492,7 @@ Be concise. Act fast. Complete all steps before calling done.`;
                 localStorage.setItem('iact3-llm-key', apiKey.trim());
                 // Reset agent so next command uses proxy
                 pageAgent = null;
-                console.log('%c✅ LLM configured! Using qwen3.7-max via proxy. Next command will use it.', 'color: green; font-weight: bold');
+                console.log('%c\u2705 LLM configured! Using qwen3.7-max via proxy. Next command will use it.', 'color: green; font-weight: bold');
                 addMessage('LLM 已配置，下次对话将使用 qwen3.7-max。');
             } else {
                 console.error('Failed to configure:', result);
@@ -492,8 +501,46 @@ Be concise. Act fast. Complete all steps before calling done.`;
             console.error('Failed to set LLM key:', e);
         }
     };
-
+    
+    // ========== iac-code Integration ==========
+    // Check iac-code availability and generate templates via iac-code
+    window.generateTemplate = async function(prompt, format = 'ros') {
+        addMessage(`\u6b63\u5728\u4f7f\u7528 iac-code \u751f\u6210\u6a21\u677f...`, 'user');
+        setStatus(true, t('aiThinking'));
+        setInputEnabled(false);
+        try {
+            const resp = await fetch('/api/ai/generate-template', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({prompt, format}),
+            });
+            const result = await resp.json();
+            if (result.template) {
+                // Try to fill template into editor
+                const editor = document.getElementById('template-editor');
+                if (editor && editor.value !== undefined) {
+                    editor.value = result.template;
+                    editor.dispatchEvent(new Event('input'));
+                    addMessage(`\u6a21\u677f\u5df2\u751f\u6210\u5e76\u586b\u5165\u7f16\u8f91\u5668\u3002\u8bf7\u70b9\u51fb "Auto Generate" \u751f\u6210\u53c2\u6570\uff0c\u7136\u540e "Run Test"\u3002`);
+                } else {
+                    addMessage(result.template.substring(0, 500) + (result.template.length > 500 ? '...' : ''));
+                }
+            } else if (result.error) {
+                addErrorMessage(`iac-code: ${result.error}`);
+                if (result.hint) {
+                    addMessage(`\u63d0\u793a: ${result.hint}`);
+                }
+            }
+        } catch (e) {
+            addErrorMessage(`\u8c03\u7528\u5931\u8d25: ${e.message}`);
+        } finally {
+            setStatus(false);
+            setInputEnabled(true);
+        }
+    };
+    
     // ========== Init ==========
     console.log('[AI Assistant] iact3 AI Assistant loaded');
     console.log('[AI Assistant] Tip: Run setLLMKey("sk-xxx") in console to configure LLM without restarting server.');
+    console.log('[AI Assistant] Tip: Run generateTemplate("create a VPC with ECS") to generate templates via iac-code.');
 })();
