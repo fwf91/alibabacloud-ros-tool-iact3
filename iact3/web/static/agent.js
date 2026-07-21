@@ -59,17 +59,18 @@
 
 ### 生成模板并询价
 1. 如果在 Playground 页面，确认当前是 ROS 模式（如果不是，点击 ROS 标签）
-2. 清空模板编辑器（#template-editor，文本框），输入 ECS 模板内容
-   - 可使用下方 IaC 专业知识中的 ROS 模板格式
-   - 或调用 generateTemplate("create an ECS instance") 生成模板
+2. 点击模板编辑器文本框（#template-editor）使其聚焦，然后清空内容
+3. 使用 type 工具将 ECS 模板内容输入到 #template-editor 中
+   - 使用下方 IaC 专业知识中的“ECS ROS 模板示例”的完整内容
+   - 模板内容从 ROSTemplateFormatVersion 开始到 Outputs 结束
    ⚠️ 严禁在此步 done
-3. 点击 "Auto Generate" 按钮 (#btn-generate-params) 生成参数
+4. 点击 "Auto Generate" 按钮 (#btn-generate-params) 生成参数
    ⚠️ 严禁在此步 done
-4. 等待参数生成完成
-5. 点击 "Estimate Cost" 按钮 (#btn-cost) 进行询价
+5. 等待参数生成完成（观察页面提示或按钮状态变化）
+6. 点击 "Estimate Cost" 按钮 (#btn-cost) 进行询价
    ⚠️ 严禁在此步 done
-6. 等待询价完成，在 "Cost" 输出标签页 (#result-cost) 中查看结果
-7. 调用 done 汇报询价结果（包含月费用、资源类型、规格等）
+7. 等待询价完成，点击 "Cost" 标签页查看结果
+8. 调用 done 汇报询价结果（包含月费用、资源类型、规格等）
 
 ### 配置并运行测试
 1. 如在 Playground 页面，点击 "ROS Example" 或 "Terraform Example" 加载模板

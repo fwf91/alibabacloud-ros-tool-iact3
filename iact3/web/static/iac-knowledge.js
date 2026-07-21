@@ -92,6 +92,81 @@ ECS无公网IP时通过NAT网关SNAT访问公网`;
 4. 在Playground页面加载模板 → 选地域 → Auto Generate → Run Test
 5. 库存相关参数不写死，通过Auto Generate自动查询`;
 
+    // ECS ROS 模板示例（完整可用）
+    const ECS_TEMPLATE_EXAMPLE = `
+## ECS ROS 模板示例（可直接复制到编辑器）
+ROSTemplateFormatVersion: '2015-09-01'
+Description: ECS instance with VPC and SecurityGroup
+Parameters:
+  ZoneId:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::ZoneId
+    AssociationPropertyMetadata:
+      RegionId: \${ALIYUN::Region}
+  InstanceType:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      ZoneId: \${ZoneId}
+      InstanceChargeType: PostPaid
+  ImageId:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Image::ImageId
+    AssociationPropertyMetadata:
+      RegionId: \${ALIYUN::Region}
+      InstanceType: \${InstanceType}
+  SystemDiskCategory:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Disk::SystemDiskCategory
+    AssociationPropertyMetadata:
+      ZoneId: \${ZoneId}
+      InstanceType: \${InstanceType}
+    Default: cloud_essd
+  Password:
+    Type: String
+    NoEcho: true
+    Description: ECS instance password
+Resources:
+  Vpc:
+    Type: ALIYUN::ECS::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+  VSwitch:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VpcId: !Ref Vpc
+      ZoneId: !Ref ZoneId
+      CidrBlock: 192.168.0.0/24
+  SecurityGroup:
+    Type: ALIYUN::ECS::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - PortRange: 22/22
+          Protocol: tcp
+          SourceCidrIp: 0.0.0.0/0
+        - PortRange: 80/80
+          Protocol: tcp
+          SourceCidrIp: 0.0.0.0/0
+  EcsInstance:
+    Type: ALIYUN::ECS::InstanceGroup
+    Properties:
+      ZoneId: !Ref ZoneId
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId
+      SystemDiskCategory: !Ref SystemDiskCategory
+      SystemDiskSize: 40
+      VpcId: !Ref Vpc
+      VSwitchId: !Ref VSwitch
+      SecurityGroupId: !Ref SecurityGroup
+      Password: !Ref Password
+      MaxAmount: 1
+Outputs:
+  InstanceId:
+    Value: !GetAtt EcsInstance.InstanceIds
+  PrivateIp:
+    Value: !GetAtt EcsInstance.PrivateIps`;
+
     // 组合完整知识库
     const IAC_KNOWLEDGE = {
         rosResources: ROS_RESOURCES,
@@ -102,17 +177,19 @@ ECS无公网IP时通过NAT网关SNAT访问公网`;
         rosFunctions: ROS_FUNCTIONS,
         terraformSpec: TERRAFORM_SPEC,
         templateFlow: TEMPLATE_FLOW,
+        ecsTemplateExample: ECS_TEMPLATE_EXAMPLE,
 
         // 获取完整知识文本（用于注入 system prompt）
         getFullKnowledge: function () {
             return [ROS_RESOURCES, ECS_SELECTION, PARAM_SPEC, SECURITY,
-                    VPC_PLANNING, ROS_FUNCTIONS, TERRAFORM_SPEC, TEMPLATE_FLOW].join('\n');
+                    VPC_PLANNING, ROS_FUNCTIONS, TERRAFORM_SPEC, TEMPLATE_FLOW,
+                    ECS_TEMPLATE_EXAMPLE].join('\n');
         },
 
         // 获取精简版知识（控制 token 数量）
         getCompactKnowledge: function () {
             return [ROS_RESOURCES, ECS_SELECTION, PARAM_SPEC, SECURITY,
-                    TEMPLATE_FLOW].join('\n');
+                    TEMPLATE_FLOW, ECS_TEMPLATE_EXAMPLE].join('\n');
         }
     };
 
