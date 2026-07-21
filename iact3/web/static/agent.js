@@ -68,7 +68,7 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
             const commonOptions = {
                 language: 'zh-CN',
                 viewportExpansion: 0,  // Only process elements in viewport
-                maxSteps: 5,           // Limit steps to prevent context overflow
+                maxSteps: 10,          // Allow enough steps for multi-action workflows
                 interactiveBlacklist: [
                     // Exclude large/complex areas from DOM dehydration
                     document.getElementById('template-editor'),
