@@ -147,6 +147,13 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
         }
 
         try {
+            // Dynamically add data-page-agent-ignore to AI panel elements
+            // This ensures it works even if HTML is cached without the attribute
+            const aiPanel = document.getElementById('ai-assistant-panel');
+            const aiBtn = document.getElementById('ai-assistant-btn');
+            if (aiPanel) aiPanel.setAttribute('data-page-agent-ignore', '');
+            if (aiBtn) aiBtn.setAttribute('data-page-agent-ignore', '');
+
             // Check if backend LLM proxy is configured
             let llmConfig = { configured: false };
             try {
@@ -164,8 +171,15 @@ Be concise. Act fast. NEVER call done after just navigating to a page. Complete 
                 viewportExpansion: 0,  // Only process elements in viewport
                 maxSteps: 20,          // Complex workflows need enough steps
                 interactiveBlacklist: [
+                    // Exclude AI assistant panel and button - Page Agent must NOT see itself
+                    document.getElementById('ai-assistant-panel'),
+                    document.getElementById('ai-assistant-btn'),
+                    document.getElementById('ai-input'),
+                    document.getElementById('ai-send'),
+                    document.getElementById('ai-messages'),
+                    document.getElementById('ai-quick-actions'),
+                    document.getElementById('ai-status'),
                     // Exclude large/complex areas from DOM dehydration
-                    document.getElementById('template-editor'),
                     document.getElementById('config-editor'),
                     document.getElementById('report-iframe'),
                     document.getElementById('template-highlight'),
