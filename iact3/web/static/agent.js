@@ -212,9 +212,12 @@ Be concise. Act fast. Call done when finished.`;
     }
 
     // ========== Extract Result from Agent History ==========
-    function extractAgentResult() {
+    // Only search entries added after startIndex to avoid stale results
+    function extractAgentResult(startIndex = 0) {
         if (!pageAgent) return null;
-        const history = pageAgent.history || [];
+        const fullHistory = pageAgent.history || [];
+        // Only look at new entries from this execution
+        const history = fullHistory.slice(startIndex);
         if (history.length === 0) return null;
 
         // Strategy 1: Find last 'done' action with text
@@ -301,11 +304,14 @@ Be concise. Act fast. Call done when finished.`;
         pageAgent.addEventListener('activity', onActivity);
         pageAgent.addEventListener('statuschange', onStatusChange);
 
+        // Record history length before execution to isolate results
+        const historyStartIndex = (pageAgent.history || []).length;
+
         try {
             await pageAgent.execute(command);
 
-            // Get result from agent
-            const extractedResult = extractAgentResult();
+            // Get result only from new history entries (this execution)
+            const extractedResult = extractAgentResult(historyStartIndex);
             if (extractedResult) {
                 addMessage(extractedResult);
             } else {
@@ -313,8 +319,8 @@ Be concise. Act fast. Call done when finished.`;
             }
         } catch (err) {
             console.error('[AI Assistant] Execution error:', err);
-            // Even on error, try to extract useful results from history
-            const partialResult = extractAgentResult();
+            // Even on error, try to extract useful results from new history entries
+            const partialResult = extractAgentResult(historyStartIndex);
             if (partialResult) {
                 addMessage(partialResult);
                 return;
