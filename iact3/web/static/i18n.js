@@ -438,6 +438,7 @@ const I18N = {
         aiInitializing: 'Initializing...',
         aiRunning: 'Running...',
         aiExecuting: 'Executing...',
+        aiPayloadTooLarge: 'Page content too large for demo LLM. Please set DASHSCOPE_API_KEY to use your own model.',
     },
     zh: {
         appTitle: 'iact3 - 基础设施即代码模板测试',
@@ -877,6 +878,7 @@ const I18N = {
         aiInitializing: '初始化中...',
         aiRunning: '运行中...',
         aiExecuting: '执行中...',
+        aiPayloadTooLarge: '页面内容过大，超出免费 LLM 限制。请设置 DASHSCOPE_API_KEY 使用自有模型。',
     }
 };
 

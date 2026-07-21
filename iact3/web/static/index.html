@@ -102,7 +102,7 @@
                                 <button type="button" class="format-btn" id="tab-yaml" data-format="yaml" data-i18n="yamlTab">YAML</button>
                             </div>
                         </div>
-                        <div class="template-editor-wrap">
+                        <div class="template-editor-wrap" data-page-agent-ignore>
                             <div id="tf-file-list" class="tf-file-list hidden">
                                 <div class="tf-file-list-header">
                                     <span data-i18n="tfDirTitle">Directory</span>
@@ -153,7 +153,7 @@
                     </div>
                 </div>
 
-                <div class="pg-output" id="pg-output">
+                <div class="pg-output" id="pg-output" data-page-agent-ignore>
                     <div class="output-head" data-i18n-title="collapseOutputHint" title="Click to collapse/expand output">
                         <span id="pg-output-title" data-i18n="resultTitle">Result</span>
                         <div class="output-actions">
@@ -360,13 +360,13 @@
                 <div class="project-detail-tab-pane" id="task-detail-pane-stacks">
                     <div id="detail-stacks"></div>
                 </div>
-                <div class="project-detail-tab-pane" id="task-detail-pane-template">
+                <div class="project-detail-tab-pane" id="task-detail-pane-template" data-page-agent-ignore>
                     <div id="detail-template"></div>
                 </div>
-                <div class="project-detail-tab-pane" id="task-detail-pane-params">
+                <div class="project-detail-tab-pane" id="task-detail-pane-params" data-page-agent-ignore>
                     <div id="detail-params"></div>
                 </div>
-                <div class="project-detail-tab-pane" id="task-detail-pane-logs">
+                <div class="project-detail-tab-pane" id="task-detail-pane-logs" data-page-agent-ignore>
                     <div id="detail-logs" class="log-list"><div class="empty-state" data-i18n="noLogs">No logs available yet.</div></div>
                 </div>
             </div>
@@ -377,7 +377,7 @@
 </div>
 
 <!-- Report Modal -->
-<div id="report-modal" class="modal-overlay">
+<div id="report-modal" class="modal-overlay" data-page-agent-ignore>
     <div class="modal-content modal-content-report">
         <div class="modal-header">
             <h3 id="report-modal-title" data-i18n="viewReportBtn">View Report</h3>
@@ -392,7 +392,7 @@
     </div>
 </div>
 
-<div id="version-modal" class="version-modal-overlay">
+<div id="version-modal" class="version-modal-overlay" data-page-agent-ignore>
     <div class="version-modal">
         <div class="version-modal-header">
             <h3 id="version-modal-title"></h3>
@@ -405,7 +405,7 @@
 <div id="toast" class="toast"></div>
 
 <!-- Project Edit Modal -->
-<div id="project-edit-modal" class="modal-overlay">
+<div id="project-edit-modal" class="modal-overlay" data-page-agent-ignore>
     <div class="modal-content modal-content-edit">
         <div class="modal-header">
             <div class="project-edit-name-wrap">
@@ -504,7 +504,7 @@
 </div>
 
 <!-- Policy Modal -->
-<div id="policy-modal" class="modal-overlay">
+<div id="policy-modal" class="modal-overlay" data-page-agent-ignore>
     <div class="modal-content modal-content-policy">
         <div class="modal-header">
             <h3 data-i18n="policyTitle">RAM Policy</h3>
@@ -520,7 +520,7 @@
 </div>
 
 <!-- Unified Result Modal -->
-<div id="result-modal" class="modal-overlay">
+<div id="result-modal" class="modal-overlay" data-page-agent-ignore>
     <div class="modal-content modal-content-result">
         <div class="modal-header">
             <h3 id="result-modal-title" data-i18n="resultTitle">Result</h3>
@@ -536,7 +536,7 @@
 </div>
 
 <!-- Confirm Dialog -->
-<div id="confirm-modal" class="modal-overlay">
+<div id="confirm-modal" class="modal-overlay" data-page-agent-ignore>
     <div class="modal-content confirm-modal-content">
         <div class="confirm-modal-icon" id="confirm-modal-icon"></div>
         <div class="confirm-modal-body">
@@ -556,7 +556,7 @@
 </div>
 
 <!-- Prompt Dialog -->
-<div id="prompt-modal" class="modal-overlay">
+<div id="prompt-modal" class="modal-overlay" data-page-agent-ignore>
     <div class="modal-content prompt-modal-content">
         <div class="prompt-modal-body">
             <h3 class="prompt-modal-title" id="prompt-modal-title">New File</h3>
@@ -611,6 +611,6 @@
 <script src="/static/hcl.js?v=1"></script>
 <script src="/static/i18n.js?v=13"></script>
 <script src="/static/app.js?v=24"></script>
-<script src="/static/agent.js?v=3"></script>
+<script src="/static/agent.js?v=4"></script>
 </body>
 </html>

@@ -64,22 +64,37 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
 
             let agentOptions;
 
+            // Common options to reduce DOM payload size (fixes HTTP 413)
+            const commonOptions = {
+                language: 'zh-CN',
+                viewportExpansion: 0,  // Only process elements in viewport
+                interactiveBlacklist: [
+                    // Exclude large/complex areas from DOM dehydration
+                    document.getElementById('template-editor'),
+                    document.getElementById('config-editor'),
+                    document.getElementById('report-iframe'),
+                    document.getElementById('template-highlight'),
+                    document.getElementById('config-highlight'),
+                    document.getElementById('template-line-numbers'),
+                ].filter(Boolean),
+            };
+
             if (llmConfig.configured) {
                 // Use backend proxy with real LLM
                 agentOptions = {
+                    ...commonOptions,
                     model: 'qwen3.5-plus',
                     baseURL: window.location.origin + '/api/llm/proxy',
                     apiKey: 'proxy-managed',
-                    language: 'en-US',
                 };
                 console.log('[AI Assistant] Using backend LLM proxy');
             } else {
                 // Use Page Agent's free demo LLM endpoint
                 agentOptions = {
+                    ...commonOptions,
                     model: 'qwen3.5-plus',
                     baseURL: 'https://page-ag-testing-ohftxirgbn.cn-shanghai.fcapp.run',
                     apiKey: 'NA',
-                    language: 'en-US',
                 };
                 console.log('[AI Assistant] Using demo LLM endpoint');
             }
@@ -227,7 +242,12 @@ Be helpful and concise. If a task requires multiple steps, execute them in seque
             console.error('[AI Assistant] Execution error:', err);
             // Try fallback for simple commands
             if (executeFallbackCommand(command)) return;
-            addErrorMessage(`Error: ${err.message || t('aiExecFailed')}`);
+            const errMsg = err.message || '';
+            if (errMsg.includes('413') || errMsg.includes('Payload Too Large')) {
+                addErrorMessage(t('aiPayloadTooLarge'));
+            } else {
+                addErrorMessage(`Error: ${errMsg || t('aiExecFailed')}`);
+            }
         } finally {
             pageAgent.removeEventListener('activity', onActivity);
             pageAgent.removeEventListener('statuschange', onStatusChange);
