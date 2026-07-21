@@ -985,6 +985,70 @@ def _cleanup_stale_current_files():
         LOG.info(f'Cleaned {cleaned} stale temp directories from _current/')
 
 
+# --- AI Assistant / Page Agent LLM Proxy ---
+
+async def llm_proxy(request):
+    """POST /api/llm/proxy - Proxy LLM API requests to hide API key.
+
+    This endpoint forwards requests to the configured LLM provider
+    (e.g., DashScope/Qwen) while keeping the API key secure on the server.
+
+    Environment variables:
+      - DASHSCOPE_API_KEY: API key for DashScope (Qwen models)
+      - LLM_BASE_URL: Custom LLM API base URL (optional)
+    """
+    import aiohttp as aioh
+
+    api_key = os.environ.get('DASHSCOPE_API_KEY', '')
+    base_url = os.environ.get('LLM_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+
+    if not api_key:
+        return web.json_response(
+            {'error': 'LLM API key not configured. Set DASHSCOPE_API_KEY environment variable.'},
+            status=503
+        )
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({'error': 'Invalid JSON body'}, status=400)
+
+    # Forward to LLM API
+    target_url = f'{base_url}/chat/completions'
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
+
+    try:
+        async with aioh.ClientSession() as session:
+            async with session.post(target_url, json=body, headers=headers, timeout=aioh.ClientTimeout(total=120)) as resp:
+                response_body = await resp.json()
+                return web.json_response(response_body, status=resp.status)
+    except aioh.ClientError as e:
+        LOG.error(f'LLM proxy error: {e}')
+        return web.json_response({'error': f'LLM API request failed: {str(e)}'}, status=502)
+    except Exception as e:
+        LOG.error(f'LLM proxy unexpected error: {e}')
+        return web.json_response({'error': 'Internal server error'}, status=500)
+
+
+async def get_llm_config(request):
+    """GET /api/llm/config - Get LLM configuration status.
+
+    Returns whether the LLM proxy is configured and available.
+    """
+    api_key = os.environ.get('DASHSCOPE_API_KEY', '')
+    base_url = os.environ.get('LLM_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+
+    return web.json_response({
+        'configured': bool(api_key),
+        'provider': 'dashscope',
+        'baseURL': '/api/llm/proxy',  # Always use proxy
+        'models': ['qwen3.5-plus', 'qwen-turbo', 'qwen-max'] if api_key else [],
+    })
+
+
 def setup_routes(app: web.Application):
     """Register all API routes."""
     # Clean up stale temp files from previous sessions
@@ -3040,3 +3104,8 @@ def setup_routes(app: web.Application):
     app.router.add_post('/api/history/cleanup', cleanup_history)
     app.router.add_get('/api/history/{id}', get_history)
     app.router.add_delete('/api/history/{id}', delete_history)
+
+    # --- API: AI Assistant (Page Agent LLM Proxy) ---
+    app.router.add_post('/api/llm/proxy/chat/completions', llm_proxy)
+    app.router.add_post('/api/llm/proxy', llm_proxy)
+    app.router.add_get('/api/llm/config', get_llm_config)

@@ -569,10 +569,49 @@
     </div>
 </div>
 
+<!-- AI Assistant Panel -->
+<div id="ai-assistant-panel" class="ai-panel hidden">
+    <div class="ai-panel-header">
+        <div class="ai-panel-title">
+            <img src="/static/img/ai-avatar.png" alt="AI" class="ai-panel-icon">
+            <span data-i18n="aiAssistantTitle">AI Assistant</span>
+        </div>
+        <div class="ai-panel-actions">
+            <button type="button" class="ai-panel-btn" id="ai-panel-clear" title="Clear" data-i18n-title="aiClearTooltip">🗑️</button>
+            <button type="button" class="ai-panel-btn" id="ai-panel-close">✕</button>
+        </div>
+    </div>
+    <div class="ai-panel-messages" id="ai-messages">
+        <div class="ai-message ai-message-assistant">
+            <div class="ai-message-content" data-i18n="aiWelcome">Hi! I'm your iact3 AI assistant. Try: "Load ROS example and run test" or "Help me create a VPC template"</div>
+        </div>
+    </div>
+    <div class="ai-panel-quick" id="ai-quick-actions">
+        <button class="ai-quick-btn" data-cmd="Load ROS example" data-i18n="aiQuickRos">ROS Example</button>
+        <button class="ai-quick-btn" data-cmd="Navigate to Tasks page" data-i18n="aiQuickTasks">View Tasks</button>
+        <button class="ai-quick-btn" data-cmd="Navigate to Projects page" data-i18n="aiQuickProjects">Projects</button>
+    </div>
+    <div class="ai-panel-input">
+        <input type="text" id="ai-input" data-i18n-placeholder="aiInputPlaceholder" placeholder="Enter command..." autocomplete="off">
+        <button type="button" id="ai-send" class="ai-send-btn">➤</button>
+    </div>
+    <div class="ai-panel-status hidden" id="ai-status">
+        <span class="ai-status-spinner"></span>
+        <span id="ai-status-text" data-i18n="aiThinking">Thinking...</span>
+    </div>
+</div>
+
+<!-- AI Assistant Float Button -->
+<button id="ai-assistant-btn" class="ai-float-btn" title="AI Assistant">
+    <img src="/static/img/ai-avatar.png" alt="AI" class="ai-float-icon">
+</button>
+
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/page-agent@1.12.2/dist/iife/page-agent.demo.js?autoInit=false" crossorigin="anonymous"></script>
 <script src="/static/hcl.js?v=1"></script>
 <script src="/static/i18n.js?v=11"></script>
 <script src="/static/app.js?v=24"></script>
+<script src="/static/agent.js?v=1"></script>
 </body>
 </html>

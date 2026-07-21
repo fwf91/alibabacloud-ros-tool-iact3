@@ -414,6 +414,15 @@ const I18N = {
         continueBtn: 'Continue',
         runSummary: 'Summary',
         runAnalysis: 'Error Analysis',
+        // AI Assistant
+        aiAssistantTitle: 'AI Assistant',
+        aiWelcome: 'Hi! I\'m your iact3 AI assistant. Try: "Load ROS example and run test" or "Help me create a VPC template"',
+        aiInputPlaceholder: 'Enter command...',
+        aiThinking: 'Thinking...',
+        aiClearTooltip: 'Clear chat',
+        aiQuickRos: 'ROS Example',
+        aiQuickTasks: 'View Tasks',
+        aiQuickProjects: 'Projects',
     },
     zh: {
         appTitle: 'iact3 - 基础设施即代码模板测试',
@@ -829,6 +838,15 @@ const I18N = {
         continueBtn: '继续',
         runSummary: '摘要',
         runAnalysis: '错误分析',
+        // AI 助手
+        aiAssistantTitle: 'AI 助手',
+        aiWelcome: '你好！我是 iact3 AI 助手。试试：“加载 ROS 示例并运行测试” 或 “帮我创建一个 VPC 模板”',
+        aiInputPlaceholder: '输入指令...',
+        aiThinking: '思考中...',
+        aiClearTooltip: '清空对话',
+        aiQuickRos: 'ROS 示例',
+        aiQuickTasks: '查看任务',
+        aiQuickProjects: '项目列表',
     }
 };
 
